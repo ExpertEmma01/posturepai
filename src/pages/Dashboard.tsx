@@ -50,6 +50,11 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link to="/history">
+              <Button variant="outline" size="sm" className="gap-2">
+                <TrendingUp className="h-4 w-4" /> History
+              </Button>
+            </Link>
             <Button
               variant={isRunning ? "destructive" : "default"}
               size="sm"
