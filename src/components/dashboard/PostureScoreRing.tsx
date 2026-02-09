@@ -1,8 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import { PostureMetrics } from "@/lib/postureAnalysis";
 
-const PostureScoreRing = () => {
-  const score = 82;
+interface Props {
+  liveMetrics?: PostureMetrics | null;
+}
+
+const PostureScoreRing = ({ liveMetrics }: Props) => {
+  const score = liveMetrics?.overallScore ?? 82;
+  const neckVal = liveMetrics ? Math.min(100, Math.round((liveMetrics.neckAngle / 180) * 100)) : 75;
+  const shoulderVal = liveMetrics?.shoulderAlignment ?? 82;
+  const spineVal = liveMetrics ? Math.max(0, 100 - liveMetrics.spineAngle * 3) : 88;
   const circumference = 2 * Math.PI * 60;
   const offset = circumference - (score / 100) * circumference;
 
@@ -38,10 +46,10 @@ const PostureScoreRing = () => {
           </div>
 
           <div className="space-y-3">
-            <ScoreItem label="Spine Alignment" value={88} />
-            <ScoreItem label="Neck Angle" value={75} />
-            <ScoreItem label="Shoulder Position" value={82} />
-            <ScoreItem label="Sitting Balance" value={79} />
+            <ScoreItem label="Spine Alignment" value={spineVal} />
+            <ScoreItem label="Neck Angle" value={neckVal} />
+            <ScoreItem label="Shoulder Position" value={shoulderVal} />
+            <ScoreItem label="Sitting Balance" value={Math.round((score + spineVal) / 2)} />
           </div>
         </div>
       </CardContent>

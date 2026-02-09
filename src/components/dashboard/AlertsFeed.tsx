@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
-const alerts = [
+const defaultAlerts = [
   { type: "warning", message: "Neck tilted forward — adjust screen height", time: "2 min ago" },
   { type: "success", message: "Great posture maintained for 25 minutes!", time: "15 min ago" },
   { type: "warning", message: "Shoulders raised — try to relax", time: "32 min ago" },
@@ -15,7 +15,16 @@ const iconMap = {
   info: <Info className="h-4 w-4 text-info" />,
 };
 
-const AlertsFeed = () => {
+interface AlertsFeedProps {
+  liveIssues?: string[];
+}
+
+const AlertsFeed = ({ liveIssues = [] }: AlertsFeedProps) => {
+  const liveAlerts = liveIssues.map((msg) => ({ type: "warning" as const, message: msg, time: "Now" }));
+  const alerts = liveAlerts.length > 0
+    ? [...liveAlerts, ...defaultAlerts.slice(0, 3)]
+    : defaultAlerts;
+
   return (
     <Card className="shadow-soft">
       <CardHeader>
