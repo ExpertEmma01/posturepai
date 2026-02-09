@@ -1,17 +1,38 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, ArrowLeft, Bell, Camera, CameraOff, CheckCircle2, AlertTriangle, XCircle, TrendingUp, Clock, Gauge } from "lucide-react";
+import { Activity, ArrowLeft, Bell, Camera, CameraOff, TrendingUp, Clock, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
+import PostureMonitor from "@/components/dashboard/PostureMonitor";
 import PostureScoreRing from "@/components/dashboard/PostureScoreRing";
 import SessionHistory from "@/components/dashboard/SessionHistory";
 import AlertsFeed from "@/components/dashboard/AlertsFeed";
 import ErgonomicTips from "@/components/dashboard/ErgonomicTips";
+import { usePoseDetection } from "@/hooks/usePoseDetection";
+import { PostureMetrics } from "@/lib/postureAnalysis";
 
 const Dashboard = () => {
-  const [monitoring, setMonitoring] = useState(false);
+  const [liveMetrics, setLiveMetrics] = useState<PostureMetrics | null>(null);
+
+  const handleMetricsUpdate = useCallback((m: PostureMetrics) => {
+    setLiveMetrics(m);
+  }, []);
+
+  const { videoRef, landmarks, metrics, isLoading, isRunning, error, start, stop } =
+    usePoseDetection({ onMetricsUpdate: handleMetricsUpdate });
+
+  const handleToggle = () => {
+    if (isRunning) {
+      stop();
+      setLiveMetrics(null);
+    } else {
+      start();
+    }
+  };
+
+  const displayScore = liveMetrics?.overallScore ?? 82;
+  const displayStatus = liveMetrics ? (liveMetrics.status === "good" ? "Healthy" : liveMetrics.status === "fair" ? "Needs adjustment" : "Correct now") : "Start monitoring";
 
   return (
     <div className="min-h-screen bg-background">
@@ -30,13 +51,14 @@ const Dashboard = () => {
 
           <div className="flex items-center gap-3">
             <Button
-              variant={monitoring ? "destructive" : "default"}
+              variant={isRunning ? "destructive" : "default"}
               size="sm"
               className="gap-2"
-              onClick={() => setMonitoring(!monitoring)}
+              onClick={handleToggle}
+              disabled={isLoading}
             >
-              {monitoring ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
-              {monitoring ? "Stop" : "Start Monitoring"}
+              {isRunning ? <CameraOff className="h-4 w-4" /> : <Camera className="h-4 w-4" />}
+              {isLoading ? "Loading..." : isRunning ? "Stop" : "Start Monitoring"}
             </Button>
           </div>
         </div>
@@ -53,33 +75,43 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Status Banner */}
-        {monitoring && (
+        {isRunning && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             className="mb-6 flex items-center gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3"
           >
             <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
-            <span className="text-sm font-medium text-foreground">Posture monitoring active — AI is analyzing your position</span>
+            <span className="text-sm font-medium text-foreground">
+              Posture monitoring active — AI is analyzing your position in real time
+            </span>
           </motion.div>
         )}
 
         {/* Stats Cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Gauge} label="Posture Score" value="82/100" trend="+5 from yesterday" positive />
+          <StatCard icon={Gauge} label="Posture Score" value={`${displayScore}/100`} trend={displayStatus} positive={liveMetrics?.status === "good"} />
           <StatCard icon={Clock} label="Today's Session" value="3h 24m" trend="2 breaks taken" />
-          <StatCard icon={Bell} label="Alerts Today" value="7" trend="3 fewer than avg" positive />
+          <StatCard icon={Bell} label="Alerts Today" value={liveMetrics ? `${liveMetrics.issues.length}` : "7"} trend={liveMetrics ? "Live" : "3 fewer than avg"} positive={liveMetrics ? liveMetrics.issues.length === 0 : true} />
           <StatCard icon={TrendingUp} label="Weekly Trend" value="+12%" trend="Consistent improvement" positive />
         </div>
 
         {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <PostureScoreRing />
+            <PostureMonitor
+              videoRef={videoRef}
+              landmarks={landmarks}
+              metrics={metrics}
+              isRunning={isRunning}
+              isLoading={isLoading}
+              error={error}
+            />
+            <PostureScoreRing liveMetrics={liveMetrics} />
             <SessionHistory />
           </div>
           <div className="space-y-6">
-            <AlertsFeed />
+            <AlertsFeed liveIssues={isRunning ? liveMetrics?.issues ?? [] : []} />
             <ErgonomicTips />
           </div>
         </div>
